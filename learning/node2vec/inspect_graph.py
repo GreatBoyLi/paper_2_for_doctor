@@ -7,8 +7,9 @@ import pandas as pd
 # 1. 路径
 # ============================================================
 
-DATASET_DIR = Path("../data/source/processed_source/source_2014/model_dataset")
-GRAPH_DIR = Path("../data/source/processed_source/source_2014/graph")
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+DATASET_DIR = PROJECT_DIR / "data/source/processed_source/source_2014/model_dataset"
+GRAPH_DIR = PROJECT_DIR / "data/source/processed_source/source_2014/graph"
 
 # ============================================================
 # 2. 目前只检查 Fold 1

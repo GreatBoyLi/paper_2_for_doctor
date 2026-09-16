@@ -8,10 +8,10 @@ import pandas as pd
 # 1. 路径与 Fold
 #
 # 以脚本所在位置为基准，从项目根目录查找数据。
-# 因此从项目根目录或 model/ 目录运行都可以。
+# 因此从项目根目录或 learning/node2vec/ 目录运行都可以。
 # ============================================================
 
-PROJECT_DIR = Path(__file__).resolve().parents[1]
+PROJECT_DIR = Path(__file__).resolve().parents[2]
 DATASET_DIR = PROJECT_DIR / "data/source/processed_source/source_2014/model_dataset"
 GRAPH_DIR = PROJECT_DIR / "data/source/processed_source/source_2014/graph"
 FOLD_ID = 1
