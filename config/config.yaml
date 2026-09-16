@@ -8,6 +8,7 @@ experiment:
 
 node2vec:
   walk_length: 20
+  num_walks: 20
   seed: 42
   # p 越小越容易立即返回；q 越小越倾向向外探索。均须大于 0。
   p: 1.0
