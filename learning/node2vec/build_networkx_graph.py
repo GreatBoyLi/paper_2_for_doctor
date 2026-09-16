@@ -1,24 +1,16 @@
 from pathlib import Path
+import sys
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 
-# ============================================================
-# 1. 路径与 Fold
-#
-# 以脚本所在位置为基准，从项目根目录查找数据。
-# 因此从项目根目录或 learning/node2vec/ 目录运行都可以。
-# ============================================================
-
-PROJECT_DIR = Path(__file__).resolve().parents[2]
-DATASET_DIR = PROJECT_DIR / "data/source/processed_source/source_2014/model_dataset"
-GRAPH_DIR = PROJECT_DIR / "data/source/processed_source/source_2014/graph"
-FOLD_ID = 1
-
+# 直接运行本文件时，把项目根目录加入模块搜索路径。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from config import config as project_config
 
 # ============================================================
-# 2. 将邻接矩阵转换成 NetworkX 无向图
+# 1. 将邻接矩阵转换成 NetworkX 无向图
 # ============================================================
 
 def build_networkx_graph(station_names, adj):
@@ -48,12 +40,12 @@ def build_networkx_graph(station_names, adj):
 
 
 # ============================================================
-# 3. 读取实际数据并检查转换结果
+# 2. 读取实际数据并检查转换结果
 # ============================================================
 
 def main():
-    station_order_file = DATASET_DIR / "SOURCE_STATION_ORDER.csv"
-    adjacency_file = GRAPH_DIR / f"fold_{FOLD_ID}" / "adjacency_binary.npy"
+    station_order_file = project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
+    adjacency_file = project_config.GRAPH_DIR / f"fold_{project_config.FOLD_ID}" / "adjacency_binary.npy"
 
     if not station_order_file.is_file():
         raise FileNotFoundError(f"找不到节点顺序文件：{station_order_file}")

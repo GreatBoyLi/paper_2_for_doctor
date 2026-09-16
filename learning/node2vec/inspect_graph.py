@@ -1,27 +1,18 @@
 from pathlib import Path
+import sys
 
 import numpy as np
 import pandas as pd
 
-# ============================================================
-# 1. 路径
-# ============================================================
-
-PROJECT_DIR = Path(__file__).resolve().parents[2]
-DATASET_DIR = PROJECT_DIR / "data/source/processed_source/source_2014/model_dataset"
-GRAPH_DIR = PROJECT_DIR / "data/source/processed_source/source_2014/graph"
+# 直接运行本文件时，把项目根目录加入模块搜索路径。
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from config import config as project_config
 
 # ============================================================
-# 2. 目前只检查 Fold 1
+# 1. 读取配置指定的节点顺序
 # ============================================================
 
-FOLD_ID = 1
-
-# ============================================================
-# 3. 读取节点顺序
-# ============================================================
-
-station_order_file = DATASET_DIR / "SOURCE_STATION_ORDER.csv"
+station_order_file = project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
 
 station_df = pd.read_csv(station_order_file)
 station_names = station_df["NodeID"].astype(str).tolist()
@@ -30,10 +21,10 @@ print("节点数量：", len(station_names))
 print("前10个节点：", station_names[:10])
 
 # ============================================================
-# 4. 读取 Binary 邻接矩阵
+# 2. 读取 Binary 邻接矩阵
 # ============================================================
 
-adjacency_file = GRAPH_DIR / f"fold_{FOLD_ID}" / "adjacency_binary.npy"
+adjacency_file = project_config.GRAPH_DIR / f"fold_{project_config.FOLD_ID}" / "adjacency_binary.npy"
 
 adj = np.load(adjacency_file)
 
@@ -41,7 +32,7 @@ print("\n邻接矩阵形状：", adj.shape)
 print("数据类型：", adj.dtype)
 
 # ============================================================
-# 5. 检查邻接矩阵尺寸
+# 3. 检查邻接矩阵尺寸
 #
 # 节点数量应该等于：
 #
@@ -59,7 +50,7 @@ if adj.shape != (n, n):
 print("邻接矩阵尺寸检查：通过")
 
 # ============================================================
-# 6. 检查邻接矩阵是否对称
+# 4. 检查邻接矩阵是否对称
 #
 # 之前构建的是无向图，因此应该满足：
 #
@@ -74,7 +65,7 @@ if not symmetric:
     raise RuntimeError("邻接矩阵不是对称矩阵。")
 
 # ============================================================
-# 7. 检查自环
+# 5. 检查自环
 #
 # 当前 adjacency_binary.npy 中：
 #
@@ -89,7 +80,7 @@ self_loop_count = int(np.sum(diagonal > 0))
 print("自环数量：", self_loop_count)
 
 # ============================================================
-# 8. 去掉自环
+# 6. 去掉自环
 #
 # Node2Vec进行随机游走时，
 # 我们不打算把节点自己的自环作为普通边。
@@ -99,7 +90,7 @@ adj_no_self = adj.copy()
 np.fill_diagonal(adj_no_self, 0)
 
 # ============================================================
-# 9. 统计无向边数量
+# 7. 统计无向边数量
 #
 # 无向图中一条边：
 #
@@ -118,7 +109,7 @@ edge_count = int(adj_no_self.sum() / 2)
 print("无向边数量（不含自环）：", edge_count)
 
 # ============================================================
-# 10. 查看前5个节点的邻居
+# 8. 查看前5个节点的邻居
 #
 # np.where(adj_no_self[i] > 0)[0]
 #

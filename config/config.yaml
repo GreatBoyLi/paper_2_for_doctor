@@ -1,0 +1,15 @@
+# 路径相对于项目根目录（config/ 的上级目录）。
+paths:
+  source_model_dataset: data/source/processed_source/source_2014/model_dataset
+  source_graph: data/source/processed_source/source_2014/graph
+
+experiment:
+  fold_id: 1
+
+node2vec:
+  walk_length: 20
+  seed: 42
+
+# 仅用于展示单条随机游走，不是正式训练超参数。
+demo:
+  start_node: ID089
