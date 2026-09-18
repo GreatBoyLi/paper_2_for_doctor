@@ -12,6 +12,8 @@ with CONFIG_FILE.open(encoding="utf-8") as file:
 
 DATASET_DIR = PROJECT_DIR / settings["paths"]["source_model_dataset"]
 GRAPH_DIR = PROJECT_DIR / settings["paths"]["source_graph"]
+TARGET_DATASET_DIR = PROJECT_DIR / settings["paths"]["target_model_dataset"]
+TARGET_GRAPH_DIR = PROJECT_DIR / settings["paths"]["target_graph"]
 FOLD_ID = settings["experiment"]["fold_id"]
 EMBEDDING_DIM = settings["node2vec"]["embedding_dim"]
 WALK_LENGTH = settings["node2vec"]["walk_length"]
