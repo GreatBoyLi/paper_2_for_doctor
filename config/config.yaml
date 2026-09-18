@@ -7,8 +7,12 @@ experiment:
   fold_id: 1
 
 node2vec:
+  # 以下是第一版复现设置，不是论文明确给出的全部参数。
+  embedding_dim: 32
   walk_length: 20
   num_walks: 20
+  window_size: 5
+  epochs: 50
   seed: 42
   # p 越小越容易立即返回；q 越小越倾向向外探索。均须大于 0。
   p: 1.0
