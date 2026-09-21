@@ -32,6 +32,11 @@ training:
   learning_rate: 0.001
   epochs: 5
 
+domain_adversarial:
+  # 域分类器结构和GRL系数是第一版复现设置。
+  hidden_dim: 32
+  grl_lambda: 1.0
+
 # 仅用于展示单条随机游走，不是正式训练超参数。
 demo:
   start_node: ID089
