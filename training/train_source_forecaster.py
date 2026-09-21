@@ -15,6 +15,7 @@ from learning.node2vec.build_networkx_graph import build_networkx_graph
 from learning.node2vec.demo_multiple_walks import generate_walks_per_node
 from learning.node2vec.train_node_embeddings import embeddings_in_station_order, train_word2vec
 from model.power_forecaster import GraphPowerForecaster
+from training.device import describe_device, select_device
 
 
 # ============================================================
@@ -124,7 +125,7 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=project_config.BATCH_SIZE, shuffle=False)
 
     torch.manual_seed(project_config.SEED)
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = select_device()
     node_vectors = create_node_vectors(station_names, adjacency).to(device)
     adjacency_tensor = torch.from_numpy(adjacency).float().to(device)
     model = GraphPowerForecaster(project_config.EMBEDDING_DIM, project_config.HIDDEN_DIM,
@@ -132,7 +133,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=project_config.LEARNING_RATE)
 
     print("Fold：", fold)
-    print("设备：", device)
+    print("设备：", describe_device(device))
     print("训练样本：", len(train_dataset), "验证样本：", len(val_dataset))
     print("Node2Vec 只在正式训练开始前生成一次。")
 
