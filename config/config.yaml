@@ -20,6 +20,11 @@ node2vec:
   p: 1.0
   q: 1.0
 
+forecast_model:
+  # hidden_dim 是第一版复现设置；未来16步由当前数据集任务确定。
+  hidden_dim: 32
+  output_steps: 16
+
 # 仅用于展示单条随机游走，不是正式训练超参数。
 demo:
   start_node: ID089
