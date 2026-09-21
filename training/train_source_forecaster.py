@@ -1,0 +1,155 @@
+from pathlib import Path
+import random
+import sys
+
+import numpy as np
+import pandas as pd
+import torch
+from torch import nn
+from torch.utils.data import DataLoader, TensorDataset
+
+# 直接运行本文件时，把项目根目录加入模块搜索路径。
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from config import config as project_config
+from learning.node2vec.build_networkx_graph import build_networkx_graph
+from learning.node2vec.demo_multiple_walks import generate_walks_per_node
+from learning.node2vec.train_node_embeddings import embeddings_in_station_order, train_word2vec
+from model.power_forecaster import GraphPowerForecaster
+
+
+# ============================================================
+# 1. 单轮训练与验证
+# ============================================================
+
+def train_one_epoch(model, data_loader, node_vectors, adjacency, optimizer):
+    model.train()
+    total_loss = 0.0
+    sample_count = 0
+    device = next(model.parameters()).device
+
+    for history, targets in data_loader:
+        history = history.to(device)
+        targets = targets.to(device)
+        predictions = model(history, node_vectors, adjacency)
+        loss = nn.functional.l1_loss(predictions, targets)
+
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item() * history.shape[0]
+        sample_count += history.shape[0]
+
+    return total_loss / sample_count
+
+
+def evaluate(model, data_loader, node_vectors, adjacency):
+    model.eval()
+    total_loss = 0.0
+    sample_count = 0
+    device = next(model.parameters()).device
+
+    with torch.no_grad():
+        for history, targets in data_loader:
+            history = history.to(device)
+            targets = targets.to(device)
+            predictions = model(history, node_vectors, adjacency)
+            loss = nn.functional.l1_loss(predictions, targets)
+            total_loss += loss.item() * history.shape[0]
+            sample_count += history.shape[0]
+
+    return total_loss / sample_count
+
+
+# ============================================================
+# 2. 保存最佳模型，同时保存预测时必需的图和节点信息
+# ============================================================
+
+def save_checkpoint(file, model, node_vectors, adjacency, station_names, epoch, val_loss):
+    file.parent.mkdir(parents=True, exist_ok=True)
+    model_state = {name: value.detach().cpu() for name, value in model.state_dict().items()}
+    torch.save({
+        "model_state_dict": model_state,
+        "node_vectors": node_vectors.detach().cpu(),
+        "adjacency": adjacency.detach().cpu(),
+        "station_names": station_names,
+        "epoch": epoch,
+        "val_loss": val_loss,
+    }, file)
+
+
+# ============================================================
+# 3. 读取 Source Fold 1 数据
+# ============================================================
+
+def load_power_dataset(file, station_names):
+    with np.load(file) as data:
+        sample_station_names = data["station_names"].astype(str).tolist()
+        if sample_station_names != station_names:
+            raise RuntimeError(f"{file.name} 的站点顺序与 Source 节点顺序不一致。")
+        history = torch.from_numpy(data["X"]).float()
+        targets = torch.from_numpy(data["Y"]).float()
+
+    return TensorDataset(history, targets)
+
+
+def create_node_vectors(station_names, adjacency):
+    graph = build_networkx_graph(station_names, adjacency)
+    walks = generate_walks_per_node(graph, project_config.NUM_WALKS, project_config.WALK_LENGTH,
+                                    random.Random(project_config.SEED), project_config.P, project_config.Q)
+    node2vec = train_word2vec(walks, project_config.EMBEDDING_DIM, project_config.WINDOW_SIZE,
+                              project_config.EPOCHS, project_config.SEED)
+    return torch.from_numpy(embeddings_in_station_order(node2vec, station_names)).float()
+
+
+# ============================================================
+# 4. 正式训练 Source Fold 1 基线
+# ============================================================
+
+def main():
+    fold = project_config.FOLD_ID
+    fold_dataset_dir = project_config.DATASET_DIR / f"fold_{fold}"
+    fold_graph_dir = project_config.GRAPH_DIR / f"fold_{fold}"
+    station_file = project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
+    checkpoint_file = project_config.CHECKPOINT_DIR / f"source_fold_{fold}_best.pt"
+
+    station_names = pd.read_csv(station_file)["NodeID"].astype(str).tolist()
+    adjacency = np.load(fold_graph_dir / "adjacency_binary.npy")
+    train_dataset = load_power_dataset(fold_dataset_dir / "train.npz", station_names)
+    val_dataset = load_power_dataset(fold_dataset_dir / "val.npz", station_names)
+
+    generator = torch.Generator().manual_seed(project_config.SEED)
+    train_loader = DataLoader(train_dataset, batch_size=project_config.BATCH_SIZE, shuffle=True,
+                              generator=generator)
+    val_loader = DataLoader(val_dataset, batch_size=project_config.BATCH_SIZE, shuffle=False)
+
+    torch.manual_seed(project_config.SEED)
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    node_vectors = create_node_vectors(station_names, adjacency).to(device)
+    adjacency_tensor = torch.from_numpy(adjacency).float().to(device)
+    model = GraphPowerForecaster(project_config.EMBEDDING_DIM, project_config.HIDDEN_DIM,
+                                 project_config.OUTPUT_STEPS).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=project_config.LEARNING_RATE)
+
+    print("Fold：", fold)
+    print("设备：", device)
+    print("训练样本：", len(train_dataset), "验证样本：", len(val_dataset))
+    print("Node2Vec 只在正式训练开始前生成一次。")
+
+    best_val_loss = float("inf")
+    for epoch in range(1, project_config.TRAINING_EPOCHS + 1):
+        train_loss = train_one_epoch(model, train_loader, node_vectors, adjacency_tensor, optimizer)
+        val_loss = evaluate(model, val_loader, node_vectors, adjacency_tensor)
+        print(f"Epoch {epoch:02d} | Train MAE: {train_loss:.6f} | Val MAE: {val_loss:.6f}")
+
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            save_checkpoint(checkpoint_file, model, node_vectors, adjacency_tensor,
+                            station_names, epoch, val_loss)
+
+    print("最佳验证 MAE：", best_val_loss)
+    print("最佳模型：", checkpoint_file)
+
+
+if __name__ == "__main__":
+    main()
