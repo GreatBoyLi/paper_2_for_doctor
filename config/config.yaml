@@ -4,7 +4,13 @@ paths:
   source_graph: data/source/processed_source/source_2014/graph
   target_model_dataset: data/target/processed_target_final/model_dataset
   target_graph: data/target/processed_target_final/graph
+  target_metadata: data/target/processed_target_final/10_TARGET_SELECTED_METADATA.csv
   checkpoint_dir: outputs/checkpoints
+  evaluation_dir: outputs/evaluation
+
+target:
+  # UNISOLAR站点使用澳大利亚东部当地时间，包含夏令时转换。
+  timezone: Australia/Melbourne
 
 experiment:
   fold_id: 1
