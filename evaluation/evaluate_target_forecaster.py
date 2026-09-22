@@ -262,14 +262,13 @@ def save_results(output_dir, predictions_normalized, targets_normalized,
 
 
 # ============================================================
-# 8. 评估Target Fold 1验证集
+# 8. 评估Target验证集
 # ============================================================
 
 def main():
-    fold = project_config.FOLD_ID
-    validation_file = project_config.TARGET_DATASET_DIR / f"fold_{fold}" / "val.npz"
-    checkpoint_file = project_config.CHECKPOINT_DIR / f"stage2_fold_{fold}_best.pt"
-    output_dir = project_config.EVALUATION_DIR / f"target_fold_{fold}"
+    validation_file = project_config.TARGET_DATASET_DIR / "val.npz"
+    checkpoint_file = project_config.CHECKPOINT_DIR / "stage2_best.pt"
+    output_dir = project_config.EVALUATION_DIR / "target_validation"
 
     if not checkpoint_file.is_file():
         raise FileNotFoundError(f"找不到Stage 2检查点：{checkpoint_file}")
@@ -317,7 +316,7 @@ def main():
     )
     predictions_raw = denormalize_power(predictions_normalized, q99)
     targets_raw = denormalize_power(targets_normalized, q99)
-    horizon_steps = [1, 4, 8, 12, 16]
+    horizon_steps = project_config.HORIZON_STEPS
     metrics_before_constraints = calculate_aggregate_metrics(
         predictions_raw_before_constraints, targets_raw, horizon_steps
     )
@@ -336,13 +335,12 @@ def main():
     )
 
     normalized_mae = float(np.mean(np.abs(predictions_normalized - targets_normalized)))
-    print("Fold：", fold)
     print("设备：", describe_device(device))
     print("Stage 2检查点：", checkpoint_file)
     print("最佳模型Epoch：", checkpoint["epoch"])
     print("夜间置零数量：", int(night_mask.sum()), "/", night_mask.size)
     print("归一化验证MAE：", normalized_mae)
-    print("\n目标域总功率指标：")
+    print("\n目标域验证集总功率指标：")
     print(aggregate_metrics.to_string(index=False))
     print("\n评估结果：", output_dir)
 
