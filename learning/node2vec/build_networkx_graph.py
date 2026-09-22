@@ -45,7 +45,7 @@ def build_networkx_graph(station_names, adj):
 
 def main():
     station_order_file = project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
-    adjacency_file = project_config.GRAPH_DIR / f"fold_{project_config.FOLD_ID}" / "adjacency_binary.npy"
+    adjacency_file = project_config.GRAPH_DIR / "adjacency_binary.npy"
 
     if not station_order_file.is_file():
         raise FileNotFoundError(f"找不到节点顺序文件：{station_order_file}")

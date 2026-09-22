@@ -29,12 +29,12 @@ def generate_one_walk_per_node(graph, walk_length, rng, p=1.0, q=1.0):
 
 
 # ============================================================
-# 2. 在配置指定的 Fold 上展示结果
+# 2. 在源域训练图上展示结果
 # ============================================================
 
 def main():
     station_order_file = project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
-    adjacency_file = project_config.GRAPH_DIR / f"fold_{project_config.FOLD_ID}" / "adjacency_binary.npy"
+    adjacency_file = project_config.GRAPH_DIR / "adjacency_binary.npy"
 
     station_names = pd.read_csv(station_order_file)["NodeID"].astype(str).tolist()
     adj = np.load(adjacency_file)
@@ -50,7 +50,6 @@ def main():
     if not starts_match or not lengths_match or not valid_edges:
         raise RuntimeError("游走的起点、长度或相邻节点检查未通过。")
 
-    print("Fold：", project_config.FOLD_ID)
     print("节点数量：", graph.number_of_nodes())
     print("游走数量：", len(walks))
     print("每条游走的目标节点数量：", project_config.WALK_LENGTH)

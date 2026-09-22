@@ -46,12 +46,11 @@ def main():
         ("Target", project_config.TARGET_DATASET_DIR, project_config.TARGET_GRAPH_DIR, "TARGET_STATION_ORDER.csv"),
     ]
 
-    print("Fold：", project_config.FOLD_ID)
     print(f"GIN 参数： {weights.shape}（Source/Target 共用）")
 
     for domain, dataset_dir, graph_dir, order_file in domains:
         station_names = pd.read_csv(dataset_dir / order_file)["NodeID"].astype(str).tolist()
-        adjacency = np.load(graph_dir / f"fold_{project_config.FOLD_ID}" / "adjacency_binary.npy")
+        adjacency = np.load(graph_dir / "adjacency_binary.npy")
         graph = graph_builder.build_networkx_graph(station_names, adjacency)
         walks = generate_walks_per_node(graph, project_config.NUM_WALKS, project_config.WALK_LENGTH,
                                         random.Random(project_config.SEED), project_config.P, project_config.Q)

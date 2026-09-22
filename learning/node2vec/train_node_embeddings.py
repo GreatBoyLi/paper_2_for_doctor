@@ -33,12 +33,12 @@ def embeddings_in_station_order(model, station_names):
 
 
 # ============================================================
-# 2. 只训练 Source Fold 1，并检查得到的向量
+# 2. 在 Source 训练图上训练并检查节点向量
 # ============================================================
 
 def main():
     station_order_file = project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
-    adjacency_file = project_config.GRAPH_DIR / f"fold_{project_config.FOLD_ID}" / "adjacency_binary.npy"
+    adjacency_file = project_config.GRAPH_DIR / "adjacency_binary.npy"
 
     station_names = pd.read_csv(station_order_file)["NodeID"].astype(str).tolist()
     adj = np.load(adjacency_file)
@@ -58,7 +58,6 @@ def main():
     if not np.isfinite(vectors).all():
         raise RuntimeError("节点向量中存在 NaN 或 Inf。")
 
-    print("Fold：", project_config.FOLD_ID)
     print("游走数量：", len(walks))
     print("节点向量形状：", vectors.shape)
     print("全部节点都有向量：", set(model.wv.key_to_index) == set(station_names))

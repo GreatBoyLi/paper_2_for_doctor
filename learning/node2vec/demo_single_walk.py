@@ -12,7 +12,7 @@ from learning.node2vec import build_networkx_graph as graph_builder
 
 
 # ============================================================
-# 1. 本次只观察配置指定 Fold 中的一条游走
+# 1. 本次只观察源域训练图中的一条游走
 #
 # walk_length 包括起点；设为20时，对应19次移动。
 # p 和 q 从配置读取；两者都为1时，候选邻居等概率。
@@ -67,12 +67,12 @@ def generate_single_walk(graph, start_node, walk_length, rng, p=1.0, q=1.0):
 
 
 # ============================================================
-# 3. 读取配置指定 Fold 的图，展示并检查这条游走
+# 3. 读取源域训练图，展示并检查这条游走
 # ============================================================
 
 def main():
     station_order_file = project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
-    adjacency_file = project_config.GRAPH_DIR / f"fold_{project_config.FOLD_ID}" / "adjacency_binary.npy"
+    adjacency_file = project_config.GRAPH_DIR / "adjacency_binary.npy"
 
     station_names = pd.read_csv(station_order_file)["NodeID"].astype(str).tolist()
     adj = np.load(adjacency_file)

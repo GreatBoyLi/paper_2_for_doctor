@@ -23,7 +23,7 @@ from model.gin import MeanGINLayer
 
 def load_domain(dataset_dir, graph_dir, station_order_file):
     station_names = pd.read_csv(dataset_dir / station_order_file)["NodeID"].astype(str).tolist()
-    adjacency = np.load(graph_dir / f"fold_{project_config.FOLD_ID}" / "adjacency_binary.npy")
+    adjacency = np.load(graph_dir / "adjacency_binary.npy")
     graph = build_networkx_graph(station_names, adjacency)
     walks = generate_walks_per_node(graph, project_config.NUM_WALKS, project_config.WALK_LENGTH,
                                     random.Random(project_config.SEED), project_config.P, project_config.Q)
@@ -61,7 +61,6 @@ def main():
     domain_loss = nn.functional.cross_entropy(domain_logits, domain_labels)
     domain_loss.backward()
 
-    print("Fold：", project_config.FOLD_ID)
     print("Source 空间特征：", tuple(source_features.shape))
     print("Target 空间特征：", tuple(target_features.shape))
     print("域分类输出：", tuple(domain_logits.shape))

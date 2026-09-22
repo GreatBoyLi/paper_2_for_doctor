@@ -17,15 +17,14 @@ from model.power_forecaster import GraphPowerForecaster
 
 
 # ============================================================
-# 1. 用 Source Fold 1 的两个真实样本演示一次前向与反向传播
+# 1. 用 Source 训练集的两个真实样本演示一次前向与反向传播
 #
 # 这里只验证完整预测主干能够工作，不更新参数，也不进行正式训练。
 # ============================================================
 
 def main():
-    fold = project_config.FOLD_ID
-    dataset_dir = project_config.DATASET_DIR / f"fold_{fold}"
-    graph_dir = project_config.GRAPH_DIR / f"fold_{fold}"
+    dataset_dir = project_config.DATASET_DIR
+    graph_dir = project_config.GRAPH_DIR
     station_file = project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
 
     station_names = pd.read_csv(station_file)["NodeID"].astype(str).tolist()
@@ -53,7 +52,6 @@ def main():
     loss = nn.functional.l1_loss(predictions, targets)
     loss.backward()
 
-    print("Fold：", fold)
     print("历史功率：", tuple(history.shape))
     print("Node2Vec 向量：", tuple(node_vectors.shape))
     print("真实未来功率：", tuple(targets.shape))

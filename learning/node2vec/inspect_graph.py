@@ -24,7 +24,7 @@ print("前10个节点：", station_names[:10])
 # 2. 读取 Binary 邻接矩阵
 # ============================================================
 
-adjacency_file = project_config.GRAPH_DIR / f"fold_{project_config.FOLD_ID}" / "adjacency_binary.npy"
+adjacency_file = project_config.GRAPH_DIR / "adjacency_binary.npy"
 
 adj = np.load(adjacency_file)
 
