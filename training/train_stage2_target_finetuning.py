@@ -56,15 +56,14 @@ def save_checkpoint(file, model, target_vectors, target_adjacency,
 
 
 # ============================================================
-# 3. Fold 1的Stage 2目标域微调
+# 3. Stage 2目标域微调
 # ============================================================
 
 def main():
-    fold = project_config.FOLD_ID
-    target_fold_dir = project_config.TARGET_DATASET_DIR / f"fold_{fold}"
-    stage1_file = project_config.CHECKPOINT_DIR / f"stage1_fold_{fold}_best.pt"
-    stage2_file = project_config.CHECKPOINT_DIR / f"stage2_fold_{fold}_best.pt"
-    history_file = project_config.TRAINING_HISTORY_DIR / f"stage2_fold_{fold}_history.csv"
+    target_dataset_dir = project_config.TARGET_DATASET_DIR
+    stage1_file = project_config.CHECKPOINT_DIR / "stage1_best.pt"
+    stage2_file = project_config.CHECKPOINT_DIR / "stage2_best.pt"
+    history_file = project_config.TRAINING_HISTORY_DIR / "stage2_history.csv"
 
     if not stage1_file.is_file():
         raise FileNotFoundError(f"找不到Stage 1检查点：{stage1_file}")
@@ -72,8 +71,8 @@ def main():
     target_station_names = pd.read_csv(
         project_config.TARGET_DATASET_DIR / "TARGET_STATION_ORDER.csv"
     )["NodeID"].astype(str).tolist()
-    train_dataset = load_power_dataset(target_fold_dir / "train.npz", target_station_names)
-    val_dataset = load_power_dataset(target_fold_dir / "val.npz", target_station_names)
+    train_dataset = load_power_dataset(target_dataset_dir / "train.npz", target_station_names)
+    val_dataset = load_power_dataset(target_dataset_dir / "val.npz", target_station_names)
 
     generator = torch.Generator().manual_seed(project_config.SEED)
     train_loader = DataLoader(train_dataset, batch_size=project_config.BATCH_SIZE, shuffle=True,
@@ -95,7 +94,6 @@ def main():
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=project_config.LEARNING_RATE)
 
-    print("Fold：", fold)
     print("设备：", describe_device(device))
     print("Target训练样本：", len(train_dataset), "Target验证样本：", len(val_dataset))
     print("Stage 1检查点：", stage1_file)

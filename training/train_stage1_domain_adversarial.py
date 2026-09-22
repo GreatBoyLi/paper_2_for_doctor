@@ -126,16 +126,15 @@ def save_checkpoint(file, model, source_vectors, source_adjacency, source_statio
 
 
 # ============================================================
-# 3. 正式训练Fold 1的Stage 1
+# 3. 正式训练Stage 1
 # ============================================================
 
 def main():
-    fold = project_config.FOLD_ID
-    source_fold_dir = project_config.DATASET_DIR / f"fold_{fold}"
-    source_graph_dir = project_config.GRAPH_DIR / f"fold_{fold}"
-    target_graph_dir = project_config.TARGET_GRAPH_DIR / f"fold_{fold}"
-    checkpoint_file = project_config.CHECKPOINT_DIR / f"stage1_fold_{fold}_best.pt"
-    history_file = project_config.TRAINING_HISTORY_DIR / f"stage1_fold_{fold}_history.csv"
+    source_dataset_dir = project_config.DATASET_DIR
+    source_graph_dir = project_config.GRAPH_DIR
+    target_graph_dir = project_config.TARGET_GRAPH_DIR
+    checkpoint_file = project_config.CHECKPOINT_DIR / "stage1_best.pt"
+    history_file = project_config.TRAINING_HISTORY_DIR / "stage1_history.csv"
 
     source_station_names = pd.read_csv(
         project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
@@ -146,8 +145,8 @@ def main():
     source_adjacency = np.load(source_graph_dir / "adjacency_binary.npy")
     target_adjacency = np.load(target_graph_dir / "adjacency_binary.npy")
 
-    train_dataset = load_power_dataset(source_fold_dir / "train.npz", source_station_names)
-    val_dataset = load_power_dataset(source_fold_dir / "val.npz", source_station_names)
+    train_dataset = load_power_dataset(source_dataset_dir / "train.npz", source_station_names)
+    val_dataset = load_power_dataset(source_dataset_dir / "val.npz", source_station_names)
     generator = torch.Generator().manual_seed(project_config.SEED)
     train_loader = DataLoader(train_dataset, batch_size=project_config.BATCH_SIZE, shuffle=True,
                               generator=generator)
@@ -166,7 +165,6 @@ def main():
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=project_config.LEARNING_RATE)
 
-    print("Fold：", fold)
     print("设备：", describe_device(device))
     print("Source训练样本：", len(train_dataset), "Source验证样本：", len(val_dataset))
     print("Source节点：", len(source_station_names), "Target节点：", len(target_station_names))

@@ -113,7 +113,7 @@ def save_checkpoint(file, model, node_vectors, adjacency, station_names, epoch, 
 
 
 # ============================================================
-# 3. 读取 Source Fold 1 数据
+# 3. 读取 Source 数据
 # ============================================================
 
 def load_power_dataset(file, station_names):
@@ -137,21 +137,20 @@ def create_node_vectors(station_names, adjacency):
 
 
 # ============================================================
-# 4. 正式训练 Source Fold 1 基线
+# 4. 正式训练 Source 基线
 # ============================================================
 
 def main():
-    fold = project_config.FOLD_ID
-    fold_dataset_dir = project_config.DATASET_DIR / f"fold_{fold}"
-    fold_graph_dir = project_config.GRAPH_DIR / f"fold_{fold}"
+    dataset_dir = project_config.DATASET_DIR
+    graph_dir = project_config.GRAPH_DIR
     station_file = project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
-    checkpoint_file = project_config.CHECKPOINT_DIR / f"source_fold_{fold}_best.pt"
-    history_file = project_config.TRAINING_HISTORY_DIR / f"source_fold_{fold}_history.csv"
+    checkpoint_file = project_config.CHECKPOINT_DIR / "source_best.pt"
+    history_file = project_config.TRAINING_HISTORY_DIR / "source_history.csv"
 
     station_names = pd.read_csv(station_file)["NodeID"].astype(str).tolist()
-    adjacency = np.load(fold_graph_dir / "adjacency_binary.npy")
-    train_dataset = load_power_dataset(fold_dataset_dir / "train.npz", station_names)
-    val_dataset = load_power_dataset(fold_dataset_dir / "val.npz", station_names)
+    adjacency = np.load(graph_dir / "adjacency_binary.npy")
+    train_dataset = load_power_dataset(dataset_dir / "train.npz", station_names)
+    val_dataset = load_power_dataset(dataset_dir / "val.npz", station_names)
 
     generator = torch.Generator().manual_seed(project_config.SEED)
     train_loader = DataLoader(train_dataset, batch_size=project_config.BATCH_SIZE, shuffle=True,
@@ -166,7 +165,6 @@ def main():
                                  project_config.OUTPUT_STEPS).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=project_config.LEARNING_RATE)
 
-    print("Fold：", fold)
     print("设备：", describe_device(device))
     print("训练样本：", len(train_dataset), "验证样本：", len(val_dataset))
     print("Node2Vec 只在正式训练开始前生成一次。")
