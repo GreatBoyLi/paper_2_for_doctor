@@ -16,6 +16,7 @@ from learning.node2vec.demo_multiple_walks import generate_walks_per_node
 from learning.node2vec.train_node_embeddings import embeddings_in_station_order, train_word2vec
 from model.power_forecaster import GraphPowerForecaster
 from training.device import describe_device, select_device
+from training.early_stopping import EarlyStopping
 
 
 # ============================================================
@@ -167,8 +168,16 @@ def main():
     print("设备：", describe_device(device))
     print("训练样本：", len(train_dataset), "验证样本：", len(val_dataset))
     print("Node2Vec 只在正式训练开始前生成一次。")
+    print(
+        "最多Epoch：", project_config.TRAINING_EPOCHS,
+        "Early Stopping耐心值：", project_config.EARLY_STOPPING_PATIENCE,
+    )
 
     best_val_loss = float("inf")
+    early_stopping = EarlyStopping(
+        project_config.EARLY_STOPPING_PATIENCE,
+        project_config.EARLY_STOPPING_MIN_DELTA,
+    )
     for epoch in range(1, project_config.TRAINING_EPOCHS + 1):
         train_loss = train_one_epoch(model, train_loader, node_vectors, adjacency_tensor, optimizer)
         val_loss, horizon_mae = evaluate_with_horizons(
@@ -178,10 +187,15 @@ def main():
         print(f"Epoch {epoch:02d} | Train MAE: {train_loss:.6f} | Val MAE: {val_loss:.6f}")
         print("  Val分尺度 MAE |", format_horizon_mae(horizon_mae))
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        improved, should_stop = early_stopping.update(val_loss)
+        if improved:
+            best_val_loss = early_stopping.best_loss
             save_checkpoint(checkpoint_file, model, node_vectors, adjacency_tensor,
-                            station_names, epoch, val_loss)
+                            station_names, epoch, best_val_loss)
+
+        if should_stop:
+            print(f"Early Stopping：验证MAE连续{early_stopping.wait_count}轮没有明显改善。")
+            break
 
     print("最佳验证 MAE：", best_val_loss)
     print("最佳模型：", checkpoint_file)

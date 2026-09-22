@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import config as project_config
 from model.stage2_target_finetuning import Stage2TargetFineTuningModel
 from training.device import describe_device, select_device
+from training.early_stopping import EarlyStopping
 from training.train_source_forecaster import (
     evaluate_with_horizons, format_horizon_mae, load_power_dataset, train_one_epoch,
 )
@@ -97,8 +98,16 @@ def main():
     print("Target训练样本：", len(train_dataset), "Target验证样本：", len(val_dataset))
     print("Stage 1检查点：", stage1_file)
     print("Target Node2Vec直接从Stage 1读取，不重新训练。")
+    print(
+        "最多Epoch：", project_config.TRAINING_EPOCHS,
+        "Early Stopping耐心值：", project_config.EARLY_STOPPING_PATIENCE,
+    )
 
     best_val_loss = float("inf")
+    early_stopping = EarlyStopping(
+        project_config.EARLY_STOPPING_PATIENCE,
+        project_config.EARLY_STOPPING_MIN_DELTA,
+    )
     for epoch in range(1, project_config.TRAINING_EPOCHS + 1):
         train_loss = train_one_epoch(model, train_loader, target_vectors, target_adjacency, optimizer)
         val_loss, horizon_mae = evaluate_with_horizons(
@@ -111,12 +120,17 @@ def main():
         )
         print("  Val分尺度 MAE |", format_horizon_mae(horizon_mae))
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        improved, should_stop = early_stopping.update(val_loss)
+        if improved:
+            best_val_loss = early_stopping.best_loss
             save_checkpoint(
                 stage2_file, model, target_vectors, target_adjacency,
-                target_station_names, epoch, val_loss,
+                target_station_names, epoch, best_val_loss,
             )
+
+        if should_stop:
+            print(f"Early Stopping：验证MAE连续{early_stopping.wait_count}轮没有明显改善。")
+            break
 
     print("最佳Target验证MAE：", best_val_loss)
     print("Stage 2最佳模型：", stage2_file)

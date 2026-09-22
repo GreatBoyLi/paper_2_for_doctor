@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import config as project_config
 from model.stage1_domain_adversarial import Stage1DomainAdversarialModel
 from training.device import describe_device, select_device
+from training.early_stopping import EarlyStopping
 from training.train_source_forecaster import (
     calculate_horizon_mae, create_node_vectors, format_horizon_mae, load_power_dataset,
 )
@@ -168,8 +169,16 @@ def main():
     print("Source训练样本：", len(train_dataset), "Source验证样本：", len(val_dataset))
     print("Source节点：", len(source_station_names), "Target节点：", len(target_station_names))
     print("两域Node2Vec均只在Stage 1开始前生成一次。")
+    print(
+        "最多Epoch：", project_config.TRAINING_EPOCHS,
+        "Early Stopping耐心值：", project_config.EARLY_STOPPING_PATIENCE,
+    )
 
     best_val_loss = float("inf")
+    early_stopping = EarlyStopping(
+        project_config.EARLY_STOPPING_PATIENCE,
+        project_config.EARLY_STOPPING_MIN_DELTA,
+    )
     for epoch in range(1, project_config.TRAINING_EPOCHS + 1):
         train_metrics = train_one_epoch(
             model, train_loader, source_vectors, source_adjacency,
@@ -188,12 +197,17 @@ def main():
         )
         print("  Val分尺度 MAE |", format_horizon_mae(val_metrics["horizon_mae"]))
 
-        if val_metrics["forecast_loss"] < best_val_loss:
-            best_val_loss = val_metrics["forecast_loss"]
+        improved, should_stop = early_stopping.update(val_metrics["forecast_loss"])
+        if improved:
+            best_val_loss = early_stopping.best_loss
             save_checkpoint(
                 checkpoint_file, model, source_vectors, source_adjacency, source_station_names,
                 target_vectors, target_adjacency, target_station_names, epoch, best_val_loss,
             )
+
+        if should_stop:
+            print(f"Early Stopping：验证MAE连续{early_stopping.wait_count}轮没有明显改善。")
+            break
 
     print("最佳Source验证MAE：", best_val_loss)
     print("Stage 1最佳模型：", checkpoint_file)

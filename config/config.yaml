@@ -37,10 +37,12 @@ forecast_model:
   output_steps: 16
 
 training:
-  # 以下是第一版跑通训练流程的设置，不是论文明确给出的参数。
+  # 最多训练100轮；验证MAE连续10轮没有至少0.0001的改善时提前停止。
   batch_size: 64
   learning_rate: 0.001
-  epochs: 5
+  epochs: 100
+  early_stopping_patience: 10
+  early_stopping_min_delta: 0.0001
 
 domain_adversarial:
   # 域分类器结构和GRL系数是第一版复现设置。
