@@ -17,6 +17,7 @@ from learning.node2vec.train_node_embeddings import embeddings_in_station_order,
 from model.power_forecaster import GraphPowerForecaster
 from training.device import describe_device, select_device
 from training.early_stopping import EarlyStopping
+from training.history import add_horizon_metrics, save_training_history
 
 
 # ============================================================
@@ -145,6 +146,7 @@ def main():
     fold_graph_dir = project_config.GRAPH_DIR / f"fold_{fold}"
     station_file = project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
     checkpoint_file = project_config.CHECKPOINT_DIR / f"source_fold_{fold}_best.pt"
+    history_file = project_config.TRAINING_HISTORY_DIR / f"source_fold_{fold}_history.csv"
 
     station_names = pd.read_csv(station_file)["NodeID"].astype(str).tolist()
     adjacency = np.load(fold_graph_dir / "adjacency_binary.npy")
@@ -174,6 +176,7 @@ def main():
     )
 
     best_val_loss = float("inf")
+    history_rows = []
     early_stopping = EarlyStopping(
         project_config.EARLY_STOPPING_PATIENCE,
         project_config.EARLY_STOPPING_MIN_DELTA,
@@ -193,12 +196,24 @@ def main():
             save_checkpoint(checkpoint_file, model, node_vectors, adjacency_tensor,
                             station_names, epoch, best_val_loss)
 
+        history_row = {
+            "epoch": epoch,
+            "train_mae": train_loss,
+            "val_mae": val_loss,
+            "is_best": improved,
+            "early_stopping_wait_count": early_stopping.wait_count,
+        }
+        add_horizon_metrics(history_row, horizon_mae)
+        history_rows.append(history_row)
+        save_training_history(history_file, history_rows)
+
         if should_stop:
             print(f"Early Stopping：验证MAE连续{early_stopping.wait_count}轮没有明显改善。")
             break
 
     print("最佳验证 MAE：", best_val_loss)
     print("最佳模型：", checkpoint_file)
+    print("训练历史：", history_file)
 
 
 if __name__ == "__main__":

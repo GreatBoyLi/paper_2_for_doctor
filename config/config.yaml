@@ -6,6 +6,7 @@ paths:
   target_graph: data/target/processed_target_final/graph
   target_metadata: data/target/processed_target_final/10_TARGET_SELECTED_METADATA.csv
   checkpoint_dir: outputs/checkpoints
+  training_history_dir: outputs/training_history
   evaluation_dir: outputs/evaluation
 
 target:

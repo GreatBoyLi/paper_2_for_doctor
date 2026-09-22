@@ -11,6 +11,7 @@ from config import config as project_config
 from model.stage2_target_finetuning import Stage2TargetFineTuningModel
 from training.device import describe_device, select_device
 from training.early_stopping import EarlyStopping
+from training.history import add_horizon_metrics, save_training_history
 from training.train_source_forecaster import (
     evaluate_with_horizons, format_horizon_mae, load_power_dataset, train_one_epoch,
 )
@@ -63,6 +64,7 @@ def main():
     target_fold_dir = project_config.TARGET_DATASET_DIR / f"fold_{fold}"
     stage1_file = project_config.CHECKPOINT_DIR / f"stage1_fold_{fold}_best.pt"
     stage2_file = project_config.CHECKPOINT_DIR / f"stage2_fold_{fold}_best.pt"
+    history_file = project_config.TRAINING_HISTORY_DIR / f"stage2_fold_{fold}_history.csv"
 
     if not stage1_file.is_file():
         raise FileNotFoundError(f"找不到Stage 1检查点：{stage1_file}")
@@ -104,6 +106,7 @@ def main():
     )
 
     best_val_loss = float("inf")
+    history_rows = []
     early_stopping = EarlyStopping(
         project_config.EARLY_STOPPING_PATIENCE,
         project_config.EARLY_STOPPING_MIN_DELTA,
@@ -128,12 +131,26 @@ def main():
                 target_station_names, epoch, best_val_loss,
             )
 
+        history_row = {
+            "epoch": epoch,
+            "train_mae": train_loss,
+            "val_mae": val_loss,
+            "private_weight": model.private_weight.item(),
+            "shared_weight": model.shared_weight.item(),
+            "is_best": improved,
+            "early_stopping_wait_count": early_stopping.wait_count,
+        }
+        add_horizon_metrics(history_row, horizon_mae)
+        history_rows.append(history_row)
+        save_training_history(history_file, history_rows)
+
         if should_stop:
             print(f"Early Stopping：验证MAE连续{early_stopping.wait_count}轮没有明显改善。")
             break
 
     print("最佳Target验证MAE：", best_val_loss)
     print("Stage 2最佳模型：", stage2_file)
+    print("训练历史：", history_file)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ from config import config as project_config
 from model.stage1_domain_adversarial import Stage1DomainAdversarialModel
 from training.device import describe_device, select_device
 from training.early_stopping import EarlyStopping
+from training.history import add_horizon_metrics, save_training_history
 from training.train_source_forecaster import (
     calculate_horizon_mae, create_node_vectors, format_horizon_mae, load_power_dataset,
 )
@@ -134,6 +135,7 @@ def main():
     source_graph_dir = project_config.GRAPH_DIR / f"fold_{fold}"
     target_graph_dir = project_config.TARGET_GRAPH_DIR / f"fold_{fold}"
     checkpoint_file = project_config.CHECKPOINT_DIR / f"stage1_fold_{fold}_best.pt"
+    history_file = project_config.TRAINING_HISTORY_DIR / f"stage1_fold_{fold}_history.csv"
 
     source_station_names = pd.read_csv(
         project_config.DATASET_DIR / "SOURCE_STATION_ORDER.csv"
@@ -175,6 +177,7 @@ def main():
     )
 
     best_val_loss = float("inf")
+    history_rows = []
     early_stopping = EarlyStopping(
         project_config.EARLY_STOPPING_PATIENCE,
         project_config.EARLY_STOPPING_MIN_DELTA,
@@ -205,12 +208,30 @@ def main():
                 target_vectors, target_adjacency, target_station_names, epoch, best_val_loss,
             )
 
+        history_row = {
+            "epoch": epoch,
+            "train_forecast_loss": train_metrics["forecast_loss"],
+            "train_domain_loss": train_metrics["domain_loss"],
+            "train_domain_accuracy": train_metrics["domain_accuracy"],
+            "train_total_loss": train_metrics["total_loss"],
+            "val_forecast_loss": val_metrics["forecast_loss"],
+            "val_domain_loss": val_metrics["domain_loss"],
+            "val_domain_accuracy": val_metrics["domain_accuracy"],
+            "val_total_loss": val_metrics["total_loss"],
+            "is_best": improved,
+            "early_stopping_wait_count": early_stopping.wait_count,
+        }
+        add_horizon_metrics(history_row, val_metrics["horizon_mae"])
+        history_rows.append(history_row)
+        save_training_history(history_file, history_rows)
+
         if should_stop:
             print(f"Early Stopping：验证MAE连续{early_stopping.wait_count}轮没有明显改善。")
             break
 
     print("最佳Source验证MAE：", best_val_loss)
     print("Stage 1最佳模型：", checkpoint_file)
+    print("训练历史：", history_file)
 
 
 if __name__ == "__main__":
