@@ -12,7 +12,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import config as project_config
 from model.stage1_domain_adversarial import Stage1DomainAdversarialModel
 from training.device import describe_device, select_device
-from training.train_source_forecaster import create_node_vectors, load_power_dataset
+from training.train_source_forecaster import (
+    calculate_horizon_mae, create_node_vectors, format_horizon_mae, load_power_dataset,
+)
 
 
 def create_domain_labels(source_nodes, target_nodes, device):
@@ -60,11 +62,12 @@ def train_one_epoch(model, source_loader, source_vectors, source_adjacency,
 
 
 def evaluate(model, source_loader, source_vectors, source_adjacency,
-             target_vectors, target_adjacency, grl_lambda):
+             target_vectors, target_adjacency, grl_lambda, horizon_steps=()):
     model.eval()
     device = next(model.parameters()).device
     domain_labels = create_domain_labels(source_vectors.shape[0], target_vectors.shape[0], device)
     totals = {"forecast_loss": 0.0, "domain_loss": 0.0, "domain_accuracy": 0.0, "total_loss": 0.0}
+    horizon_totals = {step: 0.0 for step in horizon_steps}
     sample_count = 0
 
     with torch.no_grad():
@@ -85,9 +88,18 @@ def evaluate(model, source_loader, source_vectors, source_adjacency,
             totals["domain_loss"] += domain_loss.item() * batch_size
             totals["domain_accuracy"] += domain_accuracy * batch_size
             totals["total_loss"] += total_loss.item() * batch_size
+            batch_horizon_mae = calculate_horizon_mae(
+                predictions, source_targets, horizon_steps
+            )
+            for step, value in batch_horizon_mae.items():
+                horizon_totals[step] += value * batch_size
             sample_count += batch_size
 
-    return {name: value / sample_count for name, value in totals.items()}
+    metrics = {name: value / sample_count for name, value in totals.items()}
+    metrics["horizon_mae"] = {
+        step: value / sample_count for step, value in horizon_totals.items()
+    }
+    return metrics
 
 
 # ============================================================
@@ -166,6 +178,7 @@ def main():
         val_metrics = evaluate(
             model, val_loader, source_vectors, source_adjacency,
             target_vectors, target_adjacency, project_config.GRL_LAMBDA,
+            project_config.HORIZON_STEPS,
         )
         print(
             f"Epoch {epoch:02d} | Train Forecast: {train_metrics['forecast_loss']:.6f} "
@@ -173,6 +186,7 @@ def main():
             f"| Domain Acc: {train_metrics['domain_accuracy']:.4f} "
             f"| Val Forecast: {val_metrics['forecast_loss']:.6f}"
         )
+        print("  Val分尺度 MAE |", format_horizon_mae(val_metrics["horizon_mae"]))
 
         if val_metrics["forecast_loss"] < best_val_loss:
             best_val_loss = val_metrics["forecast_loss"]

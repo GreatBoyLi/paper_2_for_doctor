@@ -10,7 +10,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import config as project_config
 from model.stage2_target_finetuning import Stage2TargetFineTuningModel
 from training.device import describe_device, select_device
-from training.train_source_forecaster import evaluate, load_power_dataset, train_one_epoch
+from training.train_source_forecaster import (
+    evaluate_with_horizons, format_horizon_mae, load_power_dataset, train_one_epoch,
+)
 
 
 # ============================================================
@@ -99,11 +101,15 @@ def main():
     best_val_loss = float("inf")
     for epoch in range(1, project_config.TRAINING_EPOCHS + 1):
         train_loss = train_one_epoch(model, train_loader, target_vectors, target_adjacency, optimizer)
-        val_loss = evaluate(model, val_loader, target_vectors, target_adjacency)
+        val_loss, horizon_mae = evaluate_with_horizons(
+            model, val_loader, target_vectors, target_adjacency,
+            project_config.HORIZON_STEPS,
+        )
         print(
             f"Epoch {epoch:02d} | Train MAE: {train_loss:.6f} | Val MAE: {val_loss:.6f} "
             f"| w_private: {model.private_weight.item():.4f} | w_shared: {model.shared_weight.item():.4f}"
         )
+        print("  Val分尺度 MAE |", format_horizon_mae(horizon_mae))
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss

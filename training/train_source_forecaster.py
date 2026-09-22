@@ -44,9 +44,21 @@ def train_one_epoch(model, data_loader, node_vectors, adjacency, optimizer):
     return total_loss / sample_count
 
 
-def evaluate(model, data_loader, node_vectors, adjacency):
+def calculate_horizon_mae(predictions, targets, horizon_steps):
+    horizon_mae = {}
+    for step in horizon_steps:
+        if step < 1 or step > predictions.shape[1]:
+            raise ValueError(f"预测步{step}超出1到{predictions.shape[1]}的范围。")
+        horizon_mae[step] = nn.functional.l1_loss(
+            predictions[:, step - 1], targets[:, step - 1]
+        ).item()
+    return horizon_mae
+
+
+def evaluate_with_horizons(model, data_loader, node_vectors, adjacency, horizon_steps):
     model.eval()
     total_loss = 0.0
+    horizon_totals = {step: 0.0 for step in horizon_steps}
     sample_count = 0
     device = next(model.parameters()).device
 
@@ -56,10 +68,29 @@ def evaluate(model, data_loader, node_vectors, adjacency):
             targets = targets.to(device)
             predictions = model(history, node_vectors, adjacency)
             loss = nn.functional.l1_loss(predictions, targets)
-            total_loss += loss.item() * history.shape[0]
-            sample_count += history.shape[0]
+            batch_size = history.shape[0]
+            batch_horizon_mae = calculate_horizon_mae(predictions, targets, horizon_steps)
+            total_loss += loss.item() * batch_size
+            for step, value in batch_horizon_mae.items():
+                horizon_totals[step] += value * batch_size
+            sample_count += batch_size
 
-    return total_loss / sample_count
+    horizon_mae = {step: value / sample_count for step, value in horizon_totals.items()}
+    return total_loss / sample_count, horizon_mae
+
+
+def evaluate(model, data_loader, node_vectors, adjacency):
+    val_loss, _ = evaluate_with_horizons(model, data_loader, node_vectors, adjacency, [])
+    return val_loss
+
+
+def format_horizon_mae(horizon_mae):
+    parts = []
+    for step, value in horizon_mae.items():
+        minutes = step * 15
+        label = f"{minutes}min" if minutes < 60 else f"{minutes // 60}h"
+        parts.append(f"{label}: {value:.6f}")
+    return " | ".join(parts)
 
 
 # ============================================================
@@ -140,8 +171,12 @@ def main():
     best_val_loss = float("inf")
     for epoch in range(1, project_config.TRAINING_EPOCHS + 1):
         train_loss = train_one_epoch(model, train_loader, node_vectors, adjacency_tensor, optimizer)
-        val_loss = evaluate(model, val_loader, node_vectors, adjacency_tensor)
+        val_loss, horizon_mae = evaluate_with_horizons(
+            model, val_loader, node_vectors, adjacency_tensor,
+            project_config.HORIZON_STEPS,
+        )
         print(f"Epoch {epoch:02d} | Train MAE: {train_loss:.6f} | Val MAE: {val_loss:.6f}")
+        print("  Val分尺度 MAE |", format_horizon_mae(horizon_mae))
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss

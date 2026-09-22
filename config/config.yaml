@@ -12,6 +12,10 @@ target:
   # UNISOLAR站点使用澳大利亚东部当地时间，包含夏令时转换。
   timezone: Australia/Melbourne
 
+evaluation:
+  # 分别监控未来15分钟、1小时、2小时、3小时和4小时的误差。
+  horizon_steps: [1, 4, 8, 12, 16]
+
 experiment:
   fold_id: 1
 
