@@ -12,6 +12,12 @@ paths:
 target:
   # UNISOLAR站点使用澳大利亚东部当地时间，包含夏令时转换。
   timezone: Australia/Melbourne
+  # 四个季度的独立测试时段，不参与训练、验证或Q99计算。
+  test_periods:
+    - {quarter: Q1, start: "2021-03-16", end: "2021-03-22"}
+    - {quarter: Q2, start: "2021-06-11", end: "2021-06-17"}
+    - {quarter: Q3, start: "2021-09-17", end: "2021-09-23"}
+    - {quarter: Q4, start: "2021-10-12", end: "2021-10-18"}
 
 evaluation:
   # 分别监控未来15分钟、1小时、2小时、3小时和4小时的误差。

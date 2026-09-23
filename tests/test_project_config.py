@@ -38,6 +38,7 @@ class ProjectConfigTests(unittest.TestCase):
         self.assertEqual(config.GRAPH_DIR, PROJECT_DIR / settings["paths"]["source_graph"])
         self.assertEqual(config.TARGET_DATASET_DIR, PROJECT_DIR / settings["paths"]["target_model_dataset"])
         self.assertEqual(config.TARGET_GRAPH_DIR, PROJECT_DIR / settings["paths"]["target_graph"])
+        self.assertEqual(config.TARGET_TEST_PERIODS, settings["target"]["test_periods"])
         self.assertNotIn("experiment", settings)
         self.assertFalse(hasattr(config, "FOLD_ID"))
         self.assertEqual(config.START_NODE, settings["demo"]["start_node"])
@@ -68,6 +69,20 @@ class ProjectConfigTests(unittest.TestCase):
         )
         self.assertEqual(config.DOMAIN_HIDDEN_DIM, settings["domain_adversarial"]["hidden_dim"])
         self.assertEqual(config.GRL_LAMBDA, settings["domain_adversarial"]["grl_lambda"])
+
+    def test_target_test_periods_cover_four_2021_quarters(self):
+        config = load_config_module()
+
+        self.assertEqual([period["quarter"] for period in config.TARGET_TEST_PERIODS], ["Q1", "Q2", "Q3", "Q4"])
+        self.assertEqual(
+            [(period["start"], period["end"]) for period in config.TARGET_TEST_PERIODS],
+            [
+                ("2021-03-16", "2021-03-22"),
+                ("2021-06-11", "2021-06-17"),
+                ("2021-09-17", "2021-09-23"),
+                ("2021-10-12", "2021-10-18"),
+            ],
+        )
 
     def test_training_uses_long_run_with_early_stopping(self):
         config = load_config_module()

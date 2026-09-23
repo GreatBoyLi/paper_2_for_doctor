@@ -262,18 +262,18 @@ def save_results(output_dir, predictions_normalized, targets_normalized,
 
 
 # ============================================================
-# 8. 评估Target验证集
+# 8. 评估Target测试集
 # ============================================================
 
 def main():
-    validation_file = project_config.TARGET_DATASET_DIR / "val.npz"
+    test_file = project_config.TARGET_DATASET_DIR / "test.npz"
     checkpoint_file = project_config.CHECKPOINT_DIR / "stage2_best.pt"
-    output_dir = project_config.EVALUATION_DIR / "target_validation"
+    output_dir = project_config.EVALUATION_DIR / "target_test"
 
     if not checkpoint_file.is_file():
         raise FileNotFoundError(f"找不到Stage 2检查点：{checkpoint_file}")
 
-    with np.load(validation_file) as data:
+    with np.load(test_file) as data:
         histories = torch.from_numpy(data["X"]).float()
         targets_normalized = data["Y"].astype(np.float32)
         q99 = data["q99"].astype(np.float32)
@@ -283,14 +283,14 @@ def main():
 
     metadata = pd.read_csv(project_config.TARGET_METADATA_FILE).set_index("NodeID")
     if not set(station_names).issubset(metadata.index):
-        raise RuntimeError("Target元数据缺少验证集中的站点。")
+        raise RuntimeError("Target元数据缺少测试集中的站点。")
     metadata = metadata.loc[station_names]
     latitudes = metadata["lat"].to_numpy(dtype=np.float64)
     longitudes = metadata["Lon"].to_numpy(dtype=np.float64)
 
     checkpoint = torch.load(checkpoint_file, map_location="cpu", weights_only=False)
     if checkpoint["target_station_names"] != station_names:
-        raise RuntimeError("Stage 2检查点的Target站点顺序与验证集不一致。")
+        raise RuntimeError("Stage 2检查点的Target站点顺序与测试集不一致。")
 
     device = select_device()
     node_vectors = checkpoint["target_node_vectors"].to(device)
@@ -306,7 +306,7 @@ def main():
     )
     target_times = build_target_times(y_start_time, project_config.OUTPUT_STEPS)
     if not np.array_equal(target_times[:, -1], y_end_time):
-        raise RuntimeError("生成的最后一个预测时间与验证集y_end_time不一致。")
+        raise RuntimeError("生成的最后一个预测时间与测试集y_end_time不一致。")
     predictions_normalized, night_mask = apply_pv_physical_constraints(
         predictions_normalized_before_constraints, target_times, latitudes,
         longitudes, project_config.TARGET_TIMEZONE,
@@ -339,8 +339,8 @@ def main():
     print("Stage 2检查点：", checkpoint_file)
     print("最佳模型Epoch：", checkpoint["epoch"])
     print("夜间置零数量：", int(night_mask.sum()), "/", night_mask.size)
-    print("归一化验证MAE：", normalized_mae)
-    print("\n目标域验证集总功率指标：")
+    print("归一化测试MAE：", normalized_mae)
+    print("\n目标域测试集总功率指标：")
     print(aggregate_metrics.to_string(index=False))
     print("\n评估结果：", output_dir)
 

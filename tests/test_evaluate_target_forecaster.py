@@ -10,13 +10,14 @@ SCRIPT_FILE = Path(__file__).resolve().parents[1] / "evaluation" / "evaluate_tar
 
 
 class EvaluateTargetForecasterTests(unittest.TestCase):
-    def test_main_uses_validation_data_and_non_fold_outputs(self):
+    def test_main_uses_test_data_and_non_fold_outputs(self):
         text = SCRIPT_FILE.read_text(encoding="utf-8")
         self.assertNotIn("FOLD_ID", text)
         self.assertNotIn("fold_", text)
-        self.assertIn('TARGET_DATASET_DIR / "val.npz"', text)
+        self.assertIn('TARGET_DATASET_DIR / "test.npz"', text)
         self.assertIn('CHECKPOINT_DIR / "stage2_best.pt"', text)
-        self.assertIn('EVALUATION_DIR / "target_validation"', text)
+        self.assertIn('EVALUATION_DIR / "target_test"', text)
+        self.assertNotIn('TARGET_DATASET_DIR / "val.npz"', text)
 
     def test_denormalize_power_uses_each_station_q99(self):
         self.assertTrue(SCRIPT_FILE.is_file(), f"Target评估脚本尚不存在：{SCRIPT_FILE}")
