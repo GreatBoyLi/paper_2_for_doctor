@@ -224,3 +224,4 @@ docs
 tests
 outputs
 .worktrees/
+tmp
